@@ -1,8 +1,13 @@
-from fastapi import FastAPI, File, UploadFile
-import numpy as np, os, tempfile
+from fastapi import FastAPI, File, UploadFile, HTTPException
 import scipy.sparse as sp
 from ember.features import PEFeatureExtractor
 from analyzer.ai_model import predict_from_vector
+import traceback
+import numpy as np
+
+if not hasattr(np, "int"):
+    np.int = int
+
 
 app = FastAPI(
     title="AI Malware Analyzer",
@@ -10,28 +15,38 @@ app = FastAPI(
     version="1.0.0"
 )
 
-extractor = PEFeatureExtractor(2)  # feature extractor stays loaded in memory
+# Keep extractor in memory
+extractor = PEFeatureExtractor(2)
+
+def safe_feature_vector(bytez):
+    try:
+        # This directly gives you a NumPy array (no .get() needed)
+        return extractor.feature_vector(bytez)
+    except Exception as e:
+        raise RuntimeError(f"Feature extraction failed: {str(e)}")
+
 
 @app.post("/analyze")
 async def analyze(uploaded_file: UploadFile = File(...)):
-    # Save file temporarily
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        tmp.write(await uploaded_file.read())
-        tmp_path = tmp.name
+    try:
+        # Read raw bytes directly
+        bytez = await uploaded_file.read()
 
-    with open(tmp_path, "rb") as f:
-        bytez = f.read()
-    os.remove(tmp_path)
+        # Extract EMBER features
+        features = np.array(safe_feature_vector(bytez), dtype=np.float32).reshape(1, -1)
 
-    # Extract features and predict
-    features = np.array(extractor.feature_vector(bytez), dtype=np.float32).reshape(1, -1)
-    label, prob = predict_from_vector(sp.csr_matrix(features))
+        # Predict using your model wrapper
+        label, prob = predict_from_vector(sp.csr_matrix(features))
 
-    return {
-        "filename": uploaded_file.filename,
-        "prediction": "Malware" if label == 1 else "Benign",
-        "probability": float(prob)
-    }
+        return {
+            "filename": uploaded_file.filename,
+            "prediction": "Malware" if label == 1 else "Benign",
+            "probability": float(prob)
+        }
+
+    except Exception as e:
+        print(traceback.format_exc())  # Debugging in server logs
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 @app.get("/")
 def root():
