@@ -143,10 +143,7 @@ docker run -p 8000:8000 ai-malware-analyzer
 MIT License © 2025 Sceptr3sec
 
 🙌 Acknowledgements
-EMBER Dataset by Elastic Security
-
-LightGBM by Microsoft
-
-LIEF for PE parsing
-
-FastAPI for the API framework
+ - EMBER Dataset by Elastic Security
+ - LightGBM by Microsoft
+ - LIEF for PE parsing
+ - FastAPI for the API framework
