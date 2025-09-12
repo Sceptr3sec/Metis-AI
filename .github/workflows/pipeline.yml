@@ -1,0 +1,23 @@
+name: Chimera DevSecOps Pipeline
+
+on: [push, pull_request]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/sceptr3sec/chimera-ci:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        run: semgrep --config=auto .
+
+      - name: Run Trivy
+        run: trivy fs --exit-code 1 --severity HIGH,CRITICAL .
+
+      - name: Run Checkov
+        run: checkov -d .
+
+      - name: Run Gitleaks
+        run: gitleaks detect --source . --no-git -v
