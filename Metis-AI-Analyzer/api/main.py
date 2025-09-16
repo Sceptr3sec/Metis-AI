@@ -10,7 +10,7 @@ if not hasattr(np, "int"):
 
 
 app = FastAPI(
-    title="AI Malware Analyzer",
+    title="Metis AI",
     description="Upload an EXE to detect if it's malware or benign using EMBER + LightGBM",
     version="1.0.0"
 )
